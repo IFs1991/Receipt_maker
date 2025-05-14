@@ -1,0 +1,18 @@
+import React, { useState } from 'react';
+
+const pnpmLock: React.FC = () => {
+  return (
+    <Card className="w-full bg-card">
+      <CardHeader className="bg-card">
+        <CardTitle className="bg-card">pnpm lockfile</CardTitle>
+        <CardDescription className="bg-card">このファイルはpnpmによって生成されます。</CardDescription>
+      </CardHeader>
+      <CardContent className="bg-card">
+        <p>このファイルは直接編集することを意図していません。</p>
+        <p>最新のロックファイルを取得するには、`pnpm install`を実行してください。</p>
+        <p>内容はpackage.jsonに基づいてpnpm installによって生成されます。</p>
+      </CardContent>
+    </Card>
+  );
+};
+export default pnpmLock;

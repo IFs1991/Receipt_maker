@@ -1,0 +1,641 @@
+version: 1.0
+
+project_name: Receipt_maker
+
+description: レセプト理由書アシスタントアプリケーションのフロントエンドとバックエンド連携実装指示書
+
+
+
+# ------------------------------------------------------------------------------
+
+# グローバル設定と前提条件
+
+# ------------------------------------------------------------------------------
+
+global_settings:
+
+  frontend_framework: Next.js (TypeScript, React)
+
+  frontend_directory: ./frontend
+
+  backend_framework: Express.js (TypeScript, Node.js)
+
+  backend_directory: ./backend
+
+  api_protocol: RESTful API
+
+  api_base_path_env_var: NEXT_PUBLIC_API_BASE_URL # フロントエンドで使用する環境変数名
+
+  default_api_base_path: /api/v1 # バックエンドのデフォルトAPIベースパス
+
+  authentication_method: Firebase Authentication (ID Token in Authorization header: "Bearer <token>")
+
+  database: PostgreSQL with Prisma ORM
+
+
+
+# ------------------------------------------------------------------------------
+
+# 連携タスク一覧
+
+# ------------------------------------------------------------------------------
+
+integration_tasks:
+
+  # 1. 認証連携 (ログイン)
+
+  - task_id: T001_auth_login # 変更: タスクIDにプレフィックス追加
+
+    description: ログインフォームからの認証処理をバックエンドAPIと連携させる
+
+    frontend_component: frontend/components/login-form.tsx
+
+    backend_api_module: backend/app/modules/auth/
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T001.1
+        status: completed
+
+        action: implement_firebase_auth_in_frontend
+
+        file: frontend/components/login-form.tsx
+
+        details: |
+
+          1. Firebase SDK (client) を使用してメールアドレスとパスワードでログイン処理を実装する。
+
+          2. ログイン成功後、FirebaseからIDトークンを取得する。
+
+          3. 取得したIDトークンを安全な方法でフロントエンドに保存する（例: HttpOnly Cookie, LocalStorage (セキュリティリスク考慮)）。
+
+             現時点ではuseLocalStorageが各所で使用されているため、LocalStorageへの保存を検討するが、セキュリティ面を考慮し、可能であればバックエンドでセッション管理を行いHttpOnly Cookieを使用する方式を提案する。
+
+             今回は、既存の実装に合わせてLocalStorageへの保存を一時的に行い、後続タスクでセキュアな管理方法に移行することを推奨。
+
+          4. ログイン成功後、ダッシュボードページ (`/dashboard`) にリダイレクトする。
+
+          5. ログイン失敗時のエラーハンドリングとユーザーへのフィードバックを実装する。
+
+        status: [x] 完了
+
+      - step_id: T001.2
+
+        action: verify_frontend_auth_logic
+
+        details: |
+
+          フロントエンドのログイン処理が正しくIDトークンを取得し、エラーハンドリングが行われていることを確認する。
+
+          現状の `login-form.tsx` の `handleSubmit` はダミーなので、実際のFirebase認証ロジックに置き換える。
+
+        status: [x] 完了
+
+
+
+  # 2. APIクライアント設定と認証ヘッダーの付与
+
+  - task_id: T002_api_client_setup # 変更: タスクIDにプレフィックス追加
+
+    description: フロントエンドからバックエンドAPIを呼び出すための共通クライアントを設定し、認証トークンを自動的に付与する仕組みを導入する
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T002.1
+        status: completed
+
+        action: create_api_client_utility
+
+        file: frontend/lib/apiClient.ts (新規作成)
+
+        details: |
+
+          1. `axios` や `Workspace` を使用したAPIクライアントを作成する。
+
+          2. 環境変数 `NEXT_PUBLIC_API_BASE_URL` からAPIのベースURLを読み込む設定を追加する。
+
+          3. リクエストインターセプターを使用して、LocalStorage等からIDトークンを取得し、`Authorization: Bearer <token>` ヘッダーをすべてのリクエストに自動的に付与する。
+
+          4. トークンが存在しない、または期限切れの場合の処理（例: ログインページへのリダイレクト）を検討・実装する。
+
+          5. レスポンスインターセプターを使用して、共通のエラーハンドリング（例: 401エラー時の処理）を実装する。
+
+        status: [x] 完了
+
+      - step_id: T002.2
+
+        action: integrate_api_client_in_components
+
+        details: |
+
+          以降のタスクでAPI通信を行う全てのコンポーネントで、作成した `apiClient.ts` を使用する。
+
+        status: [x] 完了
+
+
+
+  # 3. 患者情報フォーム (PatientInfoForm) の連携
+
+  - task_id: T003_patient_info_form_integration # 変更: タスクIDにプレフィックス追加
+
+    description: 患者情報フォームの保存処理をバックエンドAPIと連携させる
+
+    frontend_component: frontend/components/patient-info-form.tsx
+
+    backend_api_endpoint: POST /users/{userId}/patient-info (仮の例。実際のAPI設計に合わせて調整)
+
+                          または PUT /users/me/profile (ユーザー自身の情報として更新する場合)
+
+    backend_api_module: backend/app/modules/users/ (既存のユーザープロファイル更新APIなどと連携)
+
+    request_body_type: frontend/types/form-types.ts -> PatientInfoFormState
+
+    response_type: backend/app/modules/users/users.types.ts -> User (更新後のユーザー情報)
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T003.1
+
+        action: modify_form_submission
+
+        file: frontend/components/patient-info-form.tsx
+
+        details: |
+
+          1. `handleSubmit` 関数内で、`apiClient.ts` を使用してバックエンドのユーザープロファイル更新API (例: `PUT /users/me/profile`) にフォームデータを送信する。
+
+          2. APIの仕様に合わせてリクエストボディを整形する (例: `PatientInfoFormState` のデータをAPIが期待する形式に変換)。
+
+          3. バックエンドの `users.routes.ts` と `users.controller.ts` に、患者情報 (年齢, 性別, 主訴, 保険種別) を含むユーザープロファイル情報を更新するためのエンドポイント処理を実装または確認する。
+
+             既存の `/users/me` (GET) や `/users/me` (PUT) エンドポイントを活用する可能性を検討。
+
+          4. APIからのレスポンスに基づき、成功・失敗のフィードバックをユーザーに表示する。
+
+          5. `isSaved` の状態管理をAPIレスポンスと連動させる。
+
+        status: [x] 完了
+
+
+
+  # 4. 傷病原因フォーム (InjuryCauseForm) の連携
+
+  - task_id: T004_injury_cause_form_integration # 変更: タスクIDにプレフィックス追加
+
+    description: 傷病原因フォームの保存処理をバックエンドAPIと連携させる
+
+    frontend_component: frontend/components/injury-cause-form.tsx
+
+    backend_api_endpoint: POST /injury-causes (仮。適切なエンドポイントを設計・特定)
+
+                          または、特定の患者情報や申請情報に紐づく形で保存する。
+
+                          例: PUT /approval-info/{approvalInfoId}/injury-cause
+
+    backend_api_module: backend/app/modules/approvalInfo/ または 新規モジュール
+
+    request_body_type: { injuryCause: string }
+
+    response_type: { id: string, injuryCause: string, createdAt: Date, ... } (保存された傷病原因情報)
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T004.1
+
+        action: modify_form_submission
+
+        file: frontend/components/injury-cause-form.tsx
+
+        details: |
+
+          1. `handleSubmit` 関数内で、`apiClient.ts` を使用してバックエンドAPIに傷病原因テキストを送信する。
+
+          2. バックエンドに傷病原因を保存するAPIエンドポイントとロジックを実装する (適切なモジュールに配置)。
+
+             現状、独立した傷病原因を保存するエンドポイントは見当たらないため、`approvalInfo` や `returnInfo` に関連付ける形で実装を検討する。
+
+          3. `useDebounce` を使用した自動保存機能も、API連携に置き換えるか、手動保存と併用するか検討する。手動保存を優先し、API呼び出しで実装する。
+
+          4. APIレスポンスに基づき、成功・失敗のフィードバックを表示する。
+
+        status: [x] 完了
+
+
+
+  # 5. チャットインターフェース (ChatInterface) の連携
+
+  - task_id: T005_chat_interface_integration # 変更: タスクIDにプレフィックス追加
+
+    description: AIアシスタントチャット機能をバックエンドAPIと連携させる
+
+    frontend_component: frontend/components/chat-interface.tsx
+
+    backend_api_endpoint: POST /chat/send-message
+
+    backend_api_module: backend/app/modules/chat/
+
+    request_body_type: { message: string, history: Message[] }
+
+    response_type: { role: "assistant", content: string }
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T005.1
+
+        action: modify_send_message_handler
+
+        file: frontend/components/chat-interface.tsx
+
+        details: |
+
+          1. `handleSendMessage` 関数内のAI応答シミュレーションを、`apiClient.ts` を使用したバックエンドの `/chat/send-message` API呼び出しに置き換える。
+
+          2. リクエストボディには現在のメッセージと、必要であればチャット履歴を含める。
+
+          3. バックエンドの `chat.routes.ts` と `chat.controller.ts` および `chat.service.ts` に、メッセージを受け取りAIサービス（外部APIなど）と連携して応答を生成するロジックを実装する。
+
+             現在のバックエンドのチャット関連ファイルはReactコンポーネントのような記述になっているため、ExpressのAPIロジックに全面的に書き換える必要がある。
+
+          4. APIからのAI応答をメッセージリストに追加して表示する。
+
+          5. ローディング状態 (`isLoading`) とエラーハンドリングを適切に実装する。
+
+        status: [x] 完了
+
+
+
+  # 6. 差し戻し情報フォーム (ReturnInfoForm) の連携
+
+  - task_id: T006_return_info_form_integration # 変更: タスクIDにプレフィックス追加
+
+    description: 差し戻し情報フォームの保存処理をバックエンドAPIと連携させる
+
+    frontend_component: frontend/components/return-info-form.tsx
+
+    backend_api_endpoint: POST /return-info (仮。適切なエンドポイントを設計)
+
+                          または PUT /feedback/{feedbackId}/return-details (フィードバックに紐づく場合)
+
+    backend_api_module: backend/app/modules/feedback/ または 新規モジュール
+
+    request_body_type: frontend/types/form-types.ts -> ReturnInfoFormState & { bodyParts: BodyPart[] }
+
+    response_type: { id: string, ... } (保存された差し戻し情報)
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T006.1
+
+        action: modify_form_submission
+
+        file: frontend/components/return-info-form.tsx
+
+        details: |
+
+          1. `handleSubmit` 関数内のAPI呼び出しシミュレーションを、`apiClient.ts` を使用したバックエンドAPI呼び出しに置き換える。
+
+          2. リクエストボディには `ReturnInfoFormState` と `bodyParts` のデータを含める。
+
+          3. バックエンドに差し戻し情報を保存するAPIエンドポイントとロジックを実装する。`feedback` モジュールと関連付けるか、新規モジュールを作成する。
+
+             `bodyParts` のような関連データも適切に保存できるようにPrismaスキーマを更新し、サービスクラスを実装する。
+
+          4. APIレスポンスに基づき、成功・失敗のフィードバック (`FormStatusMessage`) を表示する。
+
+          5. フォームリセット処理をAPI成功後に行う。
+
+        status: [x] 完了
+
+
+
+  # 7. 保険申請通過情報フォーム (ApprovalInfoForm) の連携
+
+  - task_id: T007_approval_info_form_integration # 変更: タスクIDにプレフィックス追加
+
+    description: 保険申請通過情報フォームの保存処理をバックエンドAPIと連携させる
+
+    frontend_component: frontend/components/approval-info-form.tsx
+
+    backend_api_endpoint: POST /approval-info
+
+    backend_api_module: backend/app/modules/approvalInfo/
+
+    request_body_type: frontend/types/form-types.ts -> ApprovalInfoFormState & { bodyParts: BodyPart[], approvedTreatments: string[] }
+
+    response_type: backend/app/modules/approvalInfo/approvalInfo.types.ts -> ApprovalInfoWithBodyParts (または適切なレスポンス型)
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T007.1
+
+        action: modify_form_submission
+
+        file: frontend/components/approval-info-form.tsx
+
+        details: |
+
+          1. `handleSubmit` 関数内のAPI呼び出しシミュレーションを、`apiClient.ts` を使用したバックエンドの `/approval-info` API呼び出しに置き換える。
+
+          2. リクエストボディには `ApprovalInfoFormState`, `bodyParts`, `approvedTreatments` のデータを含める。
+
+          3. バックエンドの `approvalInfo.routes.ts`, `approvalInfo.controller.ts`, `approvalInfo.service.ts` を実際のAPIロジックに修正する。
+
+             現在のバックエンドのモジュールファイルはReactコンポーネントのような記述になっているため、ExpressのAPIロジックに全面的に書き換える必要がある。
+
+             Prismaモデル (スキーマ未提供だが想定) に `BodyPart` や `ApprovedTreatment` のような関連エンティティを定義し、これらをトランザクション内で適切に作成・関連付けする処理を実装する。
+
+          4. APIレスポンスに基づき、成功・失敗のフィードバック (`FormStatusMessage`) を表示する。
+
+          5. フォームリセット処理をAPI成功後に行う。
+
+        status: [x] 完了
+
+
+
+  # 8. 申請結果フィードバック (FeedbackInterface) の連携
+
+  - task_id: T008_feedback_interface_integration # 変更: タスクIDにプレフィックス追加
+
+    description: 申請結果フィードバックの送信処理をバックエンドAPIと連携させる
+
+    frontend_component: frontend/components/feedback-interface.tsx
+
+    backend_api_endpoint: POST /feedback
+
+    backend_api_module: backend/app/modules/feedback/
+
+    request_body_type: { status: "approved" | "rejected" | "not_submitted", rejectionReason?: string, relatedApprovalId?: string }
+
+    response_type: { id: string, status: string, ... } (保存されたフィードバック情報)
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T008.1
+
+        action: modify_form_submission
+
+        file: frontend/components/feedback-interface.tsx
+
+        details: |
+
+          1. `handleSubmit` 関数内のAPI呼び出しシミュレーションを、`apiClient.ts` を使用したバックエンドの `/feedback` API呼び出しに置き換える。
+
+          2. リクエストボディにはフィードバックのステータス（承認、却下、未申請）と、却下の場合はその理由を含める。関連する申請IDも必要に応じて含める。
+
+          3. バックエンドの `feedback.routes.ts`, `feedback.controller.ts`, `feedback.service.ts` を実際のAPIロジックに修正する。
+
+             現在のバックエンドのモジュールファイルはReactコンポーネントのような記述になっているため、ExpressのAPIロジックに全面的に書き換える必要がある。
+
+          4. APIレスポンスに基づき、成功・失敗のフィードバックをユーザーに表示する。
+
+        status: [x] 完了
+
+
+
+  # 9. 類似承認事例表示 (SimilarCasesDisplay) の連携
+
+  - task_id: T009_similar_cases_display_integration # 変更: タスクIDにプレフィックス追加
+
+    description: 類似承認事例をバックエンドAPIから取得して表示する
+
+    frontend_component: frontend/components/similar-cases-display.tsx
+
+    backend_api_endpoint: GET /similar-cases
+
+    backend_api_module: backend/app/modules/similarCases/
+
+    query_params: { symptoms?: string, ageRange?: string, limit?: number } (現状のフロントエンドからは未使用だが、将来的な拡張を考慮)
+
+    response_type: Array<{ id: string, symptoms: string, keyPoints: string, ... }>
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T009.1
+
+        action: implement_data_fetching
+
+        file: frontend/components/similar-cases-display.tsx
+
+        details: |
+
+          1. `useEffect` フックと `apiClient.ts` を使用して、コンポーネントマウント時にバックエンドの `/similar-cases` APIから類似事例データを取得する。
+
+          2. バックエンドの `similarCases.routes.ts`, `similarCases.controller.ts`, `similarCases.service.ts` を実際のAPIロジックに修正する。
+
+             現在のバックエンドのモジュールファイルはReactコンポーネントのような記述になっているため、ExpressのAPIロジックに全面的に書き換える必要がある。
+
+             データベース (Prisma) から類似事例を検索するロジックを実装する。
+
+          3. 取得したデータをコンポーネントのstateに保存し、Accordionに表示する。
+
+          4. ローディング状態とエラーハンドリングを実装する。
+
+          5. サンプルデータ (`similarCases` 配列) を削除し、APIから取得した動的データで置き換える。
+
+        status: [x] 完了
+
+
+
+  # 10. バックエンドモジュールファイルの実装修正
+
+  - task_id: T010_backend_module_refactoring # 変更: タスクIDにプレフィックス追加
+
+    description: バックエンドの各モジュールファイル (controller, service, routes) がReactコンポーネント形式になっているため、Express.jsのAPIサーバーとして正しく機能するように修正する。
+
+    backend_directory_target: backend/app/modules/
+
+    status: [x] 完了
+
+    details: |
+
+      対象モジュール: `approvalInfo`, `auth`, `chat`, `feedback`, `similarCases`, `users`
+
+      および `backend/app/config/index.ts`, `backend/app/config/firebase.ts`, `backend/app/middleware/*.ts`, `backend/app/server.ts` など、Reactコンポーネントとして記述されているバックエンドファイルを修正。
+
+      各 `*.routes.ts` ファイル:
+
+        - `express.Router` を使用してルートを定義する。
+
+        - 対応するコントローラー関数を呼び出す。
+
+        - 認証ミドルウェア (`auth.middleware.ts` の実装が必要) やバリデーションミドルウェア (`validation.middleware.ts` の実装とZodスキーマ連携が必要) を適切に適用する。
+
+      各 `*.controller.ts` ファイル:
+
+        - Express のリクエスト (`req`) とレスポンス (`res`) オブジェクトを処理する関数をエクスポートする。
+
+        - リクエストボディやパラメータを検証する (Zodバリデータと連携)。
+
+        - 対応するサービスクラスのメソッドを呼び出す。
+
+        - サービスからの結果をクライアントにレスポンスとして返す (JSON形式、適切なHTTPステータスコード)。
+
+      各 `*.service.ts` ファイル:
+
+        - ビジネスロジックを実装するクラスまたは関数群。
+
+        - Prismaクライアントを使用してデータベースとやり取りする。
+
+        - Firebase Admin SDKを使用して認証関連の処理を行う（例: ユーザー作成、トークン検証）。
+
+        - 必要に応じて外部API（AIサービスなど）との連携を行う。
+
+      各 `*.types.ts` と `*.validator.ts`:
+
+        - TypeScriptの型定義とZodのバリデーションスキーマを定義する。これらはコントローラーとサービスで使用される。
+
+      `auth.middleware.ts`:
+
+        - Firebase Admin SDKを使用して、リクエストヘッダーのIDトークンを検証するミドルウェアを実装する。
+
+        - 検証成功時には `req.user` (または同様のプロパティ) にデコードされたユーザー情報を格納する。
+
+        - 検証失敗時には適切なエラーレスポンスを返す。
+
+
+
+  # 11. 環境変数の設定
+
+  - task_id: T011_environment_variable_setup # 変更: タスクIDにプレフィックス追加
+
+    description: フロントエンドとバックエンドで必要な環境変数を設定・確認する。
+
+    status: [x] 完了
+
+    steps:
+
+      - step_id: T011.1
+
+        action: frontend_env_setup
+
+        file: frontend/.env.local (新規作成または確認)
+
+        details: |
+
+          `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api/v1` (開発環境のバックエンドAPIサーバーアドレス)
+
+          FirebaseクライアントSDKの設定に必要な環境変数 (APIキーなど) を追加する。
+
+        status: [x] 完了
+
+      - step_id: T011.2
+
+        action: backend_env_setup
+
+        file: backend/.env (新規作成または確認, `.env.example` を参照)
+
+        details: |
+
+          `PORT=3001`
+
+          `CORS_ORIGIN=http://localhost:3000` (開発環境のフロントエンドアドレス)
+
+          `DATABASE_URL` (PostgreSQL接続文字列)
+
+          `FIREBASE_SERVICE_ACCOUNT_KEY_PATH` または `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` (Firebase Admin SDK設定)
+
+          `API_BASE_PATH=/api/v1` (オプション、デフォルト値あり)
+
+          その他、外部AIサービスAPIキーなど。
+
+        status: [x] 完了
+
+
+
+  # 12. CORS設定の確認
+
+  - task_id: T012_cors_check # 変更: タスクIDにプレフィックス追加
+
+    description: バックエンドのCORS設定がフロントエンドからのリクエストを許可しているか確認・修正する。
+
+    file: backend/app/app.ts
+
+    status: [x] 完了
+
+    details: |
+
+      `cors({ origin: env.CORS_ORIGIN })` の設定が、開発環境 (例: `http://localhost:3000`) および本番環境のフロントエンドオリジンを正しく許可していることを確認する。
+
+
+
+# ------------------------------------------------------------------------------
+
+# 型定義の整合性
+
+# ------------------------------------------------------------------------------
+
+type_definitions_consistency:
+
+  - area: API Request/Response Bodies
+
+    frontend_types_location: frontend/types/form-types.ts
+
+    backend_types_location: backend/app/modules/**/(*.types.ts|*.validator.ts)
+
+    status: [x] 完了
+
+    action_required: |
+
+      フロントエンドとバックエンド間で送受信されるデータの型に齟齬がないように確認・修正する。
+
+      特に、各フォームの `FormState` 型と、対応するバックエンドAPIが期待するリクエストボディの型、およびAPIレスポンスの型を一致させる。
+
+      Zodスキーマをバックエンドで使用しているため、これを基にフロントエンドの型を生成するか、手動で整合性を保つ。
+
+
+
+# ------------------------------------------------------------------------------
+
+# 補足事項と注意点
+
+# ------------------------------------------------------------------------------
+
+notes_and_cautions:
+
+  - note: |
+
+      多くのバックエンドモジュールファイル (`*.controller.ts`, `*.service.ts`, `*.routes.ts`, `*.types.ts` 等) が、
+
+      現状Reactコンポーネントの形式で記述されています。これらはExpress.jsのサーバーサイドロジックとして
+
+      全面的に書き直す必要があります。指示書内の `backend_api_module` の修正タスク (`task_id: T010_backend_module_refactoring`) は
+
+      この大規模なリファクタリングを指しています。
+
+  - note: |
+
+      Prismaのスキーマファイル (`schema.prisma`) が提供されていないため、データベースモデルの詳細は不明です。
+
+      各機能（特に `approvalInfo`, `returnInfo` での `bodyParts` や `approvedTreatments` のような関連データ）を
+
+      保存するためには、適切なPrismaスキーマの定義とマイグレーションが必要です。
+
+  - note: |
+
+      エラーハンドリングは各レイヤー (フロントエンドコンポーネント、APIクライアント、バックエンドコントローラー、バックエンドサービス) で
+
+      適切に行い、ユーザーに分かりやすいフィードバックを提供してください。
+
+  - note: |
+
+      セキュリティに関して、IDトークンの管理方法 (LocalStorageの代替案検討)、入力値のバリデーション (Zod活用)、
+
+      適切なエラーマスキングなどを考慮してください。

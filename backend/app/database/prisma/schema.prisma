@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  supabaseId    String    @unique @map("supabase_id")
+  email         String    @unique
+  displayName   String?   @map("display_name")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  injuryCause   Json?     @map("injury_cause") // Added for structured injury cause
+
+  patientInfos  PatientInfo[]
+  injuryCauses  InjuryCause[]
+  returnInfos   ReturnInfo[]
+  approvalInfos ApprovalInfo[]
+  chatSessions  ChatSession[]
+  feedbacks     Feedback[]
+
+  @@map("users")
+}
+
+model PatientInfo {
+  id              String     @id @default(uuid())
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String     @map("user_id")
+  age             Int
+  gender          String
+  symptoms        String
+  insuranceType   String     @map("insurance_type")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  bodyParts       BodyPart[] @relation("PatientInfoBodyParts")
+
+  @@map("patient_infos")
+}
+
+model InjuryCause {
+  id                String   @id @default(uuid())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String   @map("user_id")
+  injuryCauseText   String   @db.Text @map("injury_cause_text")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("injury_causes")
+}
+
+model ReturnInfo {
+  id                          String     @id @default(uuid())
+  user                        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                      String     @map("user_id")
+  age                         Int
+  gender                      String
+  symptoms                    String     @db.Text
+  returnReasonText            String     @db.Text @map("return_reason_text")
+  returnType                  String     @map("return_type")
+  returnDate                  DateTime?  @map("return_date")
+  initialInjuryReasonText     String     @db.Text @map("initial_injury_reason_text")
+  injuryReasonText            String     @db.Text @map("injury_reason_text")
+  insuranceType               String     @map("insurance_type")
+  createdAt                   DateTime   @default(now()) @map("created_at")
+  updatedAt                   DateTime   @updatedAt @map("updated_at")
+  bodyParts                   BodyPart[] @relation("ReturnInfoBodyParts")
+
+  @@map("return_infos")
+}
+
+model ApprovalInfo {
+  id                          String     @id @default(uuid())
+  user                        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                      String     @map("user_id")
+  age                         Int
+  gender                      String
+  symptoms                    String     @db.Text
+  approvalDate                DateTime?  @map("approval_date")
+  isFullApproval              Boolean    @map("is_full_approval")
+  partialApprovalDetails      String?    @db.Text @map("partial_approval_details")
+  injuryReasonText            String     @db.Text @map("injury_reason_text")
+  insuranceType               String     @map("insurance_type")
+  approvedTreatments          String[]   @map("approved_treatments")
+  createdAt                   DateTime   @default(now()) @map("created_at")
+  updatedAt                   DateTime   @updatedAt @map("updated_at")
+  bodyParts                   BodyPart[] @relation("ApprovalInfoBodyParts")
+
+  @@map("approval_infos")
+}
+
+model BodyPart {
+  id             String        @id @default(uuid())
+  name           String
+  symptoms       String        @db.Text
+
+  patientInfo    PatientInfo?  @relation("PatientInfoBodyParts", fields: [patientInfoId], references: [id], onDelete: Cascade)
+  patientInfoId  String?       @map("patient_info_id")
+
+  returnInfo     ReturnInfo?   @relation("ReturnInfoBodyParts", fields: [returnInfoId], references: [id], onDelete: Cascade)
+  returnInfoId   String?       @map("return_info_id")
+
+  approvalInfo   ApprovalInfo? @relation("ApprovalInfoBodyParts", fields: [approvalInfoId], references: [id], onDelete: Cascade)
+  approvalInfoId String?       @map("approval_info_id")
+
+  @@index([patientInfoId])
+  @@index([returnInfoId])
+  @@index([approvalInfoId])
+  @@map("body_parts")
+}
+
+model ChatSession {
+  id        String      @id @default(uuid())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String      @map("user_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  title     String?
+  messages  ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id          String      @id @default(uuid())
+  session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId   String      @map("session_id")
+  role        String
+  content     String      @db.Text
+  timestamp   DateTime    @default(now())
+  sources     String[]    @default([])
+
+  @@map("chat_messages")
+}
+
+model Feedback {
+  id                    String    @id @default(uuid())
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String    @map("user_id")
+  relatedApprovalId     String?   @map("related_approval_id")
+  status                String
+  rejectionReasonText   String?   @db.Text @map("rejection_reason_text")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  @@map("feedbacks")
+}
