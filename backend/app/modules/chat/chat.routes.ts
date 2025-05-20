@@ -1,17 +1,25 @@
-import React from 'react';
+import { Router } from 'express';
+import * as chatController from './chat.controller';
+import { authenticate } from '../../middleware/auth.middleware';
+import { validate } from '../../middleware/validation.middleware';
+import { sendMessageSchema, chatHistorySchema } from './chat.validator';
 
-const ChatRoutes: React.FC = () => {
-  return (
-    <Card className="w-full bg-card">
-      <CardHeader className="bg-card">
-        <CardTitle className="bg-card">AIアシスタントチャットルート</CardTitle>
-        <CardDescription className="bg-card">AIアシスタントチャットのルート設定</CardDescription>
-      </CardHeader>
-      <CardContent className="bg-card">
-        <p>このコンポーネントはAIアシスタントチャットのルートを設定します。</p>
-      </CardContent>
-    </Card>
-  );
-};
+const router = Router();
 
-export default ChatRoutes;
+// チャットメッセージ送信エンドポイント
+router.post(
+  '/messages',
+  authenticate,
+  validate(sendMessageSchema),
+  chatController.sendMessage
+);
+
+// チャット履歴取得エンドポイント
+router.get(
+  '/history',
+  authenticate,
+  validate(chatHistorySchema, 'query'),
+  chatController.getChatHistory
+);
+
+export default router;

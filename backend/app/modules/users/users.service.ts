@@ -1,31 +1,39 @@
 import { PrismaClient, User, Patient, InjuryCause } from '@prisma/client'; // Patient, InjuryCause を追加
 import { UpdateUserProfileInput, UpdateInjuryCauseInput } from './users.types';
+import prisma from '../../database'; // シングルトン Prisma Client をインポート
+import { HttpError } from '../../../utils/errors'; // HttpError をインポート
 
 // User と Patient の関連を含む型エイリアスを定義
 type UserWithPatient = User & { patient: Patient | null };
-
-const prisma = new PrismaClient();
 
 /**
  * Firebase UID でユーザープロファイルを取得します。
  * ユーザーが存在しない場合は null を返します。
  */
-export const getUserProfileByFirebaseUid = async (firebaseUid: string): Promise<UserWithPatient | null> => {
-  return prisma.user.findUnique({
+export const getUserProfileByFirebaseUid = async (firebaseUid: string): Promise<UserWithPatient> => {
+  const user = await prisma.user.findUnique({
     where: { firebaseUid },
     include: { patient: true }, // patient 情報を含める
   });
+  if (!user) {
+    throw new HttpError(404, 'ユーザーが見つかりません');
+  }
+  return user;
 };
 
 /**
  * 内部IDでユーザープロファイルを取得します。
  * ユーザーが存在しない場合は null を返します。
  */
-export const getUserProfileById = async (id: string): Promise<UserWithPatient | null> => {
-  return prisma.user.findUnique({
+export const getUserProfileById = async (id: string): Promise<UserWithPatient> => {
+  const user = await prisma.user.findUnique({
     where: { id },
     include: { patient: true }, // patient 情報を含める
   });
+  if (!user) {
+    throw new HttpError(404, 'ユーザーが見つかりません');
+  }
+  return user;
 };
 
 /**
@@ -54,7 +62,7 @@ export const createUserProfile = async (firebaseUid: string, data: Omit<UpdateUs
 export const updateUserProfileByFirebaseUid = async (
   firebaseUid: string,
   data: UpdateUserProfileInput
-): Promise<UserWithPatient | null> => {
+): Promise<UserWithPatient> => {
   const { patient, ...userData } = data;
 
   // ユーザーが存在するか確認
@@ -64,23 +72,7 @@ export const updateUserProfileByFirebaseUid = async (
   });
 
   if (!existingUser) {
-    // ユーザーが存在しない場合、新規作成するかエラーを投げるか選択
-    // ここでは例として新規作成（emailが提供されている場合）
-    if (userData.email) { // emailは必須と仮定
-        return prisma.user.create({
-            data: {
-                ...userData,
-                firebaseUid,
-                email: userData.email, // emailを明示的に指定
-                patient: patient ? { create: patient } : undefined,
-            },
-            include: { patient: true }, // patient 情報を含める
-        });
-    } else {
-        // emailがない場合はエラーまたはnullを返す
-        // この例ではnullを返すが、アプリケーションの要件に応じて変更
-        return null;
-    }
+    throw new HttpError(404, 'ユーザーが見つかりません');
   }
 
   // ユーザーが存在する場合、更新
@@ -105,14 +97,14 @@ export const updateUserProfileByFirebaseUid = async (
 export const upsertUserInjuryCauseByFirebaseUid = async (
   firebaseUid: string,
   data: UpdateInjuryCauseInput
-): Promise<InjuryCause | null> => {
+): Promise<InjuryCause> => {
   const user = await prisma.user.findUnique({
     where: { firebaseUid },
     select: { id: true }, // ユーザーIDのみ取得
   });
 
   if (!user) {
-    return null; // ユーザーが見つからない
+    throw new HttpError(404, 'ユーザーが見つかりません');
   }
 
   // 既存の最新の傷病原因を探す (InjuryCauseモデルはuserIdがuniqueではない前提)

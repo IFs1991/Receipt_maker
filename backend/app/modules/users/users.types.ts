@@ -30,6 +30,7 @@ export interface UpdateInjuryCauseInput {
 export interface UpdateUserProfileInput {
   email?: string | null;
   username?: string | null;
+  displayName?: string | null;
   // other user-specific fields that can be updated
   patient?: PatientInfoInput | null; // Optional: Patient info can be updated or created
 }

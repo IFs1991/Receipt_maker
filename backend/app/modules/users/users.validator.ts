@@ -11,8 +11,7 @@ const PatientInfoInputSchema = z.object({
   insuranceCardNumber: z.string().nullable().optional(),
   insuranceProvider: z.string().nullable().optional(),
   policyNumber: z.string().nullable().optional(),
-}).nullable().optional(),
-  injuryCause: z.string().min(1, { message: "傷病原因は必須です。" }).nullable().optional(), // 傷病原因のバリデーションを追加
+}).nullable().optional();
 
 // UpdateUserProfileInput に対応するZodスキーマ
 export const updateUserProfileSchema = z.object({

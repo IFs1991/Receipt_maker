@@ -27,9 +27,7 @@ export const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000',
   API_BASE_PATH: process.env.API_BASE_PATH || '/api/v1',
   DATABASE_URL: process.env.DATABASE_URL || '',
-  // Firebase関連の環境変数は後で削除予定
-  FIREBASE_SERVICE_ACCOUNT_KEY_PATH: process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH,
-  FIREBASE_SERVICE_ACCOUNT_KEY_BASE64: process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64,
+
   // Supabase関連の環境変数
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',

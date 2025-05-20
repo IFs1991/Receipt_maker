@@ -1,69 +1,126 @@
-# レセプト理由書アシスタント バックエンド
+# レセプト理由書アシスタント - バックエンド
 
-このプロジェクトは、レセプト理由書作成支援フロントエンドアプリケーションのためのバックエンドシステムです。
-
-## 目次
-- [概要](#概要)
-- [技術スタック](#技術スタック)
-- [セットアップ](#セットアップ)
-- [環境変数](#環境変数)
-- [APIドキュメント](#apiドキュメント)
-- [データベースマイグレーション](#データベースマイグレーション)
-- [テスト](#テスト)
-- [Docker](#docker)
-- [貢献](#貢献)
-- [Supabase移行について](#supabase移行について)
-
-## 概要
-Firebase Authentication を利用したユーザー認証、PostgreSQLデータベースへのデータ永続化、AIアシスタント連携などの機能を提供します。
+レセプト理由書作成を支援するAIアシスタントのバックエンドAPIです。
 
 ## 技術スタック
-- Node.js (TypeScript)
-- Express.js
-- PostgreSQL
-- Prisma (ORM)
-- Firebase Admin SDK
-- pnpm
-- Docker
 
-## セットアップ
-1. リポジトリをクローン: `git clone ...`
-2. 依存関係をインストール: `pnpm install`
-3. 環境変数を設定: `.env.example` を参考に `.env` ファイルを作成
-4. Firebase Admin SDK設定: `app/config/firebaseAdminSdkConfig.json` を配置 (詳細は環境変数セクション参照)
-5. データベースマイグレーション: `pnpm prisma migrate dev`
-6. 開発サーバー起動: `pnpm dev`
-
-## 環境変数
-必要な環境変数については `.env.example` を参照してください。
-特に `DATABASE_URL` と Firebase Admin SDK の設定 (`FIREBASE_SERVICE_ACCOUNT_KEY_PATH` または `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64`) が重要です。
-
-## APIドキュメント
-APIエンドポイントの詳細は、Swagger/OpenAPIドキュメント (将来的に導入予定) またはソースコード (`app/modules/**/*.routes.ts`) を参照してください。
-
-## データベースマイグレーション (Prisma)
-- マイグレーション作成: `pnpm prisma migrate dev --name <migration_name>`
-- マイグレーション適用 (開発): `pnpm prisma migrate dev`
-- マイグレーション適用 (本番): `pnpm prisma migrate deploy`
-- Prisma Studio起動: `pnpm prisma studio`
-
-## テスト
-- 全テスト実行: `pnpm test`
-- カバレッジレポート生成: `pnpm test:cov`
-
-## Docker
-- Dockerイメージビルド: `docker build -t receipt-assistant-backend .`
-- Docker Compose起動 (開発): `docker-compose up -d`
-- Docker Compose停止: `docker-compose down`
-
-## 貢献
-貢献ガイドラインは `CONTRIBUTING.md` (作成予定) を参照してください。
+- **言語・フレームワーク**: TypeScript + Express.js
+- **データベース**: PostgreSQL (Supabase)
+- **認証**: Supabase Auth
+- **バリデーション**: Zod
+- **ORM**: Prisma
+- **コンテナ化**: Docker, Docker Compose
 
 ## Supabase移行について
 
-このプロジェクトはFirebaseからSupabaseへの移行を進めています。移行の詳細と手順については以下のドキュメントを参照してください：
+このプロジェクトは元々Firebaseを使用していましたが、現在Supabaseへの移行を進めています。移行の主なポイントは以下の通りです：
 
-- [Supabase移行計画](./spabase.yaml) - 詳細な移行計画と手順
-- [Supabase移行ガイド](./supabase/README.md) - 開発者向け移行ガイド
+- 認証: Firebase AuthからSupabase Authへ
+- データベース: FirestoreからSupabase PostgreSQLへ
+- ストレージ: Firebase StorageからSupabase Storageへ（必要に応じて）
 
-移行作業の進捗状況や既知の問題については、プロジェクト管理ツールを確認してください。
+### 移行状態
+
+- [x] Supabaseクライアント設定
+- [x] 認証ミドルウェアのSupabase Auth対応
+- [ ] データベースマイグレーション
+- [ ] ユーザー移行
+
+## 開発環境のセットアップ
+
+### 前提条件
+
+- Node.js 18以上
+- Docker & Docker Compose
+- pnpm (パッケージマネージャー)
+
+### 環境変数
+
+`.env` ファイルを作成し、以下の変数を設定してください：
+
+```
+# サーバー設定
+PORT=3001
+NODE_ENV=development
+CORS_ORIGIN=http://localhost:3000
+API_BASE_PATH=/api/v1
+
+# Supabase設定
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# データベース設定
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/receipt_assistant
+```
+
+### インストールと起動
+
+```bash
+# 依存関係のインストール
+pnpm install
+
+# 開発サーバーの起動
+pnpm dev
+
+# または Docker Compose で起動
+docker-compose up
+```
+
+## API エンドポイント
+
+### 認証
+
+- `POST /api/v1/auth/register` - ユーザー登録
+- `POST /api/v1/auth/login` - ログイン
+
+### チャット
+
+- `POST /api/v1/chat/messages` - 新規メッセージ送信
+- `GET /api/v1/chat/history` - チャット履歴取得
+
+### 類似事例
+
+- `GET /api/v1/similar-cases` - 類似事例検索
+- `GET /api/v1/similar-cases/:id` - 特定の類似事例取得
+
+### フィードバック
+
+- `POST /api/v1/feedback` - フィードバック送信
+- `GET /api/v1/feedback` - フィードバック取得
+- `PUT /api/v1/feedback/:id` - フィードバック更新
+
+## コード規約
+
+このプロジェクトは、以下の規約に従っています：
+
+- ESLint と Prettier を使用してコードスタイルを統一
+- RESTful API デザイン原則に従う
+- モジュール単位のディレクトリ構造
+  - 各機能ごとに controller, service, routes, types, validator ファイルを作成
+
+## テスト
+
+```bash
+# テストの実行
+pnpm test
+
+# テストカバレッジの確認
+pnpm test:coverage
+```
+
+## コントリビューション
+
+1. このリポジトリをフォーク
+2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
+3. 変更をコミット (`git commit -m 'Add some amazing feature'`)
+4. ブランチをプッシュ (`git push origin feature/amazing-feature`)
+5. プルリクエストを作成
+
+## ライセンス
+
+プロプライエタリ - 権利者の許可なく使用、複製、改変、配布を禁じます。
+
+## 連絡先
+
+質問や提案がある場合は、イシューを作成するか、プロジェクト管理者にお問い合わせください。

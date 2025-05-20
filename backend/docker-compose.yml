@@ -1,56 +1,41 @@
-import React from 'react';
+version: '3.8'
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: receipt_assistant_backend
+    ports:
+      - "${PORT:-3001}:${PORT:-3001}"
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - ./dist:/app/dist
+      - /app/node_modules
+    depends_on:
+      - postgres
+    command: pnpm dev
+    networks:
+      - app-network
 
-const DockerCompose: React.FC = () => {
-  return (
-    <div className="bg-white dark:bg-gray-800">
-      <Card className="w-full bg-card mt-4">
-        <CardHeader className="bg-card">
-          <CardTitle className="bg-card">Docker Compose Configuration</CardTitle>
-          <CardDescription className="bg-card">Backend and PostgreSQL setup</CardDescription>
-        </CardHeader>
-        <CardContent className="bg-card">
-          <p>version: '3.8'</p>
-          <p>services:</p>
-          <p className="ml-4">backend:</p>
-          <p className="ml-8">build:</p>
-          <p className="ml-12">context: .</p>
-          <p className="ml-12">dockerfile: Dockerfile</p>
-          <p className="ml-8">container_name: receipt_assistant_backend</p>
-          <p className="ml-8">ports:</p>
-          <p className="ml-12">- "${PORT:-3001}:${PORT:-3001}"</p>
-          <p className="ml-8">env_file:</p>
-          <p className="ml-12">- .env</p>
-          <p className="ml-8">volumes:</p>
-          <p className="ml-12">- ./app:/app/app</p>
-          <p className="ml-12">- ./dist:/app/dist</p>
-          <p className="ml-12">- /app/node_modules</p>
-          <p className="ml-8">depends_on:</p>
-          <p className="ml-12">- postgres</p>
-          <p className="ml-8">command: pnpm dev</p>
-          <p className="ml-8">networks:</p>
-          <p className="ml-12">- app-network</p>
-          <p className="ml-4">postgres:</p>
-          <p className="ml-8">image: postgres:15-alpine</p>
-          <p className="ml-8">container_name: receipt_assistant_postgres</p>
-          <p className="ml-8">ports:</p>
-          <p className="ml-12">- "5432:5432"</p>
-          <p className="ml-8">environment:</p>
-          <p className="ml-12">POSTGRES_USER: ${POSTGRES_USER:-user}</p>
-          <p className="ml-12">POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}</p>
-          <p className="ml-12">POSTGRES_DB: ${POSTGRES_DB:-receiptdb}</p>
-          <p className="ml-8">volumes:</p>
-          <p className="ml-12">- postgres_data:/var/lib/postgresql/data</p>
-          <p className="ml-8">networks:</p>
-          <p className="ml-12">- app-network</p>
-          <p>volumes:</p>
-          <p className="ml-4">postgres_data:</p>
-          <p>networks:</p>
-          <p className="ml-4">app-network:</p>
-          <p className="ml-8">driver: bridge</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+  postgres:
+    image: postgres:15-alpine
+    container_name: receipt_assistant_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-receiptdb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
 
-export default DockerCompose;
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

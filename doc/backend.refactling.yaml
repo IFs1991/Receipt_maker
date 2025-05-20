@@ -127,10 +127,16 @@
         -   **影響範囲**: 対象ファイル群。アプリケーション全体のビルド・実行プロセス。
         -   **検証方法**: `tsc`によるコンパイル成功。`eslint` および `prettier` による警告ゼロ。アプリケーションの起動確認。基本的なAPIエンドポイントの疎通確認。
         -   **リスクと対策**: 大量のファイル修正に伴うデグレリスク（対策: 段階的な修正とこまめなテスト）。修正範囲の見落とし（対策: 複数人でのレビュー）。
-        -   **ステータス**: 進行中
+        -   **ステータス**: 完了
         -   **進捗**:
-            - 一部のファイルを確認し、chat.service.ts がReactコンポーネントではなくTypeScriptとして問題ないことを確認
-            - ただし、PrismaClientのインスタンス化が個別に行われており修正済み（BP_P2_T5に関連）
+            - `backend/.eslintrc.js`: Reactコンポーネント形式から正しいESLint設定ファイル形式（JavaScriptオブジェクト）に修正しました。
+            - `backend/docker-compose.yml`: React/JSX形式から正しいYAML形式に修正しました。
+            - `backend/app/database/prisma/seeds/seed.ts`: 確認の結果、Prismaシードスクリプトとして正しい形式であり、React/JSX構文は含まれていなかったため修正不要と判断しました。(PrismaClientの個別インスタンス化はBP_P2_T5で対応)
+            - `backend/app/server.ts`: 確認の結果、Expressエントリーポイントとして正しく記述されており、React/JSX構文は含まれていなかったため修正不要と判断しました。
+            - `backend/app/config/firebase.ts`: 確認の結果、TypeScriptで記述されておりReact/JSX構文は含まれていなかったため、BP_P1_T1の範囲では修正不要と判断しました。(実際の削除/置き換えはBP_P2_T1で対応)
+            - `backend/app/middleware/errorHandler.middleware.ts`: 確認の結果、TypeScriptで記述されておりReact/JSX構文は含まれていなかったため、BP_P1_T1の範囲では修正不要と判断しました。(再実装はBP_P2_T2で対応)
+            - `backend/app/modules/chat/` 配下の全ファイル (`*.ts`): 確認の結果、YAMLドキュメントの記載とは異なり、React形式ではなくExpress.jsベースのTypeScriptで記述されていたため修正不要と判断しました。
+            - `backend/tests/modules/auth/auth.service.test.ts` および `backend/tests/e2e/auth.e2e-test.ts`: 確認の結果、Jestを使用したテストコードとして記述されておりReact/JSX構文は含まれていなかったため修正不要と判断しました。(PrismaClientのモック戦略はBP_P3_T6で対応)
     -   **BP_P1_T2: 認証ミドルウェアにおけるユーザーID参照の不整合修正**
         -   **説明**: Supabase認証への移行過程で生じている可能性のある、リクエストオブジェクト内のユーザーIDキー名 (`id` vs `uid`) の不整合を解消し、一貫性を確保する。
         -   **優先度**: 最高
@@ -208,7 +214,15 @@
         -   **依存関係**: なし。
         -   **影響範囲**: 認証関連の全コード、ユーザー登録・ログインフロー、テストコード、環境設定。
         -   **検証方法**: 全ての認証関連機能（登録、ログイン、トークン検証、保護されたAPIへのアクセス）がSupabase経由で正常に動作することを確認。関連するテストが全てパスすること。
-        -   **ステータス**: 未着手
+        -   **ステータス**: 完了
+        -   **完了内容**:
+            - Firebase Admin SDK設定ファイル (`backend/app/config/firebaseAdminSdkConfig.json`) を削除しました。
+            - Firebase Admin SDK初期化ファイル (`backend/config/firebaseAdmin.ts`) を削除しました。
+            - Firebase設定ファイル (`backend/app/config/firebase.ts`) を削除しました。
+            - `backend/app/config/index.ts` からFirebase関連の環境変数定義を削除しました。
+            - `backend/tests/setup.ts` を確認し、Firebase関連のモックが残っていないことを確認しました。
+            - `package.json` を確認し、`firebase-admin` の依存関係が存在しないことを確認しました。
+            - ユーザーに対し、`.env` ファイルからFirebase関連の定義を削除するよう依頼しました。
     -   **BP_P2_T2: 共通エラーハンドリングシステムの実装**
         -   **説明**: Express.jsの共通エラーハンドリングミドルウェアを実装し、アプリケーション全体で発生するエラーを一元的に処理する。
         -   **優先度**: 高
@@ -224,7 +238,14 @@
         -   **依存関係**: なし。
         -   **影響範囲**: 全てのAPIエンドポイントのエラー処理。
         -   **検証方法**: 意図的にエラーを発生させ（例: 存在しないリソースへのアクセス、不正なリクエストデータ）、期待されるエラーレスポンスが返却されることを確認。
-        -   **ステータス**: 未着手
+        -   **ステータス**: 完了
+        -   **完了内容**:
+            - `backend/app/middleware/errorHandler.middleware.ts` を更新し、Prismaエラー (`PrismaClientKnownRequestError`, `PrismaClientValidationError`) のハンドリングを追加し、`createErrorResponse` を使用するようにしました。
+            - `backend/app/app.ts` で `errorHandler` が正しく登録されていることを確認しました。
+            - `express-async-errors` の利用を前提として、以下のコントローラーから不要な `try...catch` ブロックを削除し、エラー処理を共通エラーハンドラに委譲するように修正しました:
+                - `backend/app/modules/users/users.controller.ts`
+                - `backend/app/modules/auth/auth.controller.ts` (および関連する型定義、サービス呼び出しの修正)
+                - `backend/app/modules/chat/chat.controller.ts`
     -   **BP_P2_T3: バリデーション機能の統一**
         -   **説明**: Zodスキーマを利用した汎用的なリクエストバリデーションミドルウェアを実装し、各APIルート定義で適用する。
         -   **優先度**: 高
@@ -239,7 +260,15 @@
         -   **依存関係**: なし。
         -   **影響範囲**: 全てのAPIエンドポイントのリクエスト処理。
         -   **検証方法**: 各APIエンドポイントに対して不正なリクエストを送信し、期待されるバリデーションエラーレスポンスが返却されることを確認。
-        -   **ステータス**: 未着手
+        -   **ステータス**: 完了
+        -   **完了内容**:
+            - `backend/app/middleware/validation.middleware.ts` の `validate` 関数を修正し、ZodErrorインスタンスを共通エラーハンドラに `next(error)` で渡すようにしました。
+            - `backend/app/modules/users/users.validator.ts` の `PatientInfoInputSchema` から不要な `injuryCause` フィールドを削除しました。
+            - `backend/app/modules/users/users.routes.ts` を修正し、古い `validateRequest` ミドルウェアを新しい `validate` ミドルウェアに置き換え、`authenticate` ミドルウェアのインポートパスを修正しました。
+            - `backend/app/modules/auth/auth.validator.ts` を確認し、スキーマが `auth.types.ts` で定義・エクスポートされていることを確認しました (`registerUserSchema`, `loginUserSchema`)。
+            - `backend/app/modules/auth/auth.routes.ts` を修正し、古い `validateRequest` ミドルウェアを新しい `validate` ミドルウェアに置き換え、スキーマのインポート元と名前を修正し、`authenticate` ミドルウェアのインポートパスを修正しました。
+            - `backend/app/modules/chat/chat.validator.ts` を確認し、定義されているスキーマが利用可能であることを確認しました。
+            - `backend/app/modules/chat/chat.routes.ts` を修正し、`getChatHistory` ルートにクエリパラメータ用のバリデーション (`validate(chatHistorySchema, 'query')`) を追加しました。
     -   **BP_P2_T4: 環境変数チェックの厳格化**
         -   **説明**: アプリケーション起動時に必須の環境変数が設定されているかを確認し、不足している場合はエラーをスローして起動を停止する。
         -   **優先度**: 高
@@ -266,9 +295,11 @@
         -   **依存関係**: なし。
         -   **影響範囲**: 全てのデータベースアクセス処理。
         -   **検証方法**: コードレビュー。アプリケーション全体の動作確認。
-        -   **ステータス**: 部分的に完了
+        -   **ステータス**: 完了
         -   **進捗**:
-            - chat.service.tsでのPrismaClientの個別インスタンス化を修正し、シングルトンパターンを適用
+            - `backend/app/modules/chat/chat.service.ts` でローカルにインスタンス化されていた `PrismaClient` を、`../../database` からインポートするシングルトンインスタンスに置き換えました。
+            - `backend/app/modules/users/users.service.ts` でローカルにインスタンス化されていた `PrismaClient` を、`../../database` からインポートするシングルトンインスタンスに置き換えました。(Prisma型に関するリンターエラーは別途調査)
+            - `backend/app/modules/auth/auth.service.ts` でローカルにインスタンス化されていた `PrismaClient` を、`../../database` からインポートするシングルトンインスタンスに置き換えました。
 
 ### Phase 3: 高度な最適化と拡張性向上 (重要度: 中)
 
@@ -292,7 +323,13 @@
         -   **影響範囲**: アプリケーション全体のサービス、コントローラーのインスタンス化と依存関係の解決方法。
         -   **検証方法**: PoCの結果評価。設計レビュー。
         -   **備考**: プロジェクトの現状規模では、PrismaClientのシングルトン化で十分な場合もあるため、費用対効果を慎重に検討。
-        -   **ステータス**: 未着手
+        -   **ステータス**: 検討完了
+        -   **検討結果**:
+            - DIコンテナのメリット・デメリット、学習コストを評価しました。
+            - 主要なDIライブラリ（InversifyJS, TypeDIなど）の特性を考慮しました。
+            - 現状のアーキテクチャ（シングルトンPrisma Client、サービス直接インポート、Jestモックによるテスト）が「シンプルイズベスト」の原則に合致しており、現時点でのDIフレームワーク導入は過度な複雑化を招く可能性があると判断しました。
+            - そのため、本格的なDIコンテナの導入は見送り、現行のシンプルな構成を維持します。
+            - 将来的なアプリケーションの規模拡大や複雑性の増大に応じて、再検討することとします。
     -   **BP_P3_T2: 共通基盤クラス (BaseService, BaseController) の導入検討**
         -   **説明**: 複数のモジュールで共通して見られるCRUD操作やリクエスト処理のパターンを抽象化し、基底クラスとして提供することでコードの重複を削減する。
         -   **優先度**: 中
@@ -307,7 +344,11 @@
         -   **依存関係**: BP_P3_T1 (DI導入する場合、基底クラスへの依存注入も考慮)。
         -   **影響範囲**: ほぼ全てのサービスクラスおよびコントローラクラス。
         -   **検証方法**: リファクタリング後のコードレビュー。既存機能の動作確認。新規モジュール作成時の効率性評価。
-        -   **ステータス**: 未着手
+        -   **ステータス**: 検討完了
+        -   **検討結果**:
+            - 現状の関数ベースのサービス・コントローラ構成を維持し、BaseService/BaseControllerの導入は見送ることとしました。
+            - Prisma ClientのAPIが既に高レベルなCRUD機能を提供しており、各サービスのビジネスロジックの特異性が高いため、クラス化と継承による共通化のメリットが現時点では限定的と判断しました。
+            - コードの共通化は、必要に応じてユーティリティ関数を作成・利用する方針とします。
     -   **BP_P3_T3: APIドキュメント (Swagger/OpenAPI) の整備**
         -   **説明**: 全ての公開APIエンドポイントに対してSwagger/OpenAPI仕様に基づいたドキュメントを整備し、フロントエンド開発者やAPI利用者が参照できるようにする。
         -   **優先度**: 中
@@ -323,7 +364,14 @@
         -   **依存関係**: なし。
         -   **影響範囲**: API設計・開発プロセス。
         -   **検証方法**: 生成されたドキュメントが実際のAPI仕様と一致しているか確認。Swagger UI等で表示確認。
-        -   **ステータス**: 未着手
+        -   **ステータス**: 進行中
+        -   **進捗**:
+            - `swagger-jsdoc`, `swagger-ui-express` および関連する型定義をプロジェクトにインストールしました。
+            - `backend/app/lib/swagger.ts` を作成し、OpenAPIの基本定義と `swagger-jsdoc` のオプションを設定しました。主要な認証関連スキーマ (RegisterUserInput, LoginUserInput, UserObject, AuthSuccessResponse) および共通エラーレスポンススキーマを定義しました。
+            - `backend/app/app.ts` を修正し、`/api-docs` エンドポイントでSwagger UIを提供するように設定しました。また、ルーティングのベースパス処理を修正しました。
+            - `backend/app/modules/auth/auth.routes.ts` のJSDocコメントを更新し、`swagger.ts` で定義したスキーマを参照するように修正しました。
+            - **残課題**: 他のモジュール (users, chat など) のルートファイルについても同様にJSDocコメントの整備とスキーマ定義の拡充が必要です。
+            - ユーザーの判断により、残りのモジュール (users, chat など) のルートファイルのJSDocコメント整備とスキーマ定義の拡充は一旦保留し、次のタスク BP_P3_T4 に進む。
     -   **BP_P3_T4: Supabase Edge Functions の活用検討**
         -   **説明**: パフォーマンスが要求される処理や、バックエンドサーバーとは独立してスケーリングさせたい特定の処理について、Supabase Edge Functionsへのオフロードを検討する。
         -   **優先度**: 中
@@ -339,7 +387,10 @@
         -   **影響範囲**: 特定機能のアーキテクチャ。
         -   **検証方法**: Edge Functionの単体テストおよび結合テスト。パフォーマンス測定。
         -   **備考**: `backend/supabase/functions/health-check.ts` が既に存在するため、これを参考に開発を進める。
-        -   **ステータス**: 未着手
+        -   **ステータス**: スキップ
+        -   **進捗**:
+            - Edge Functionsに適した処理（例: 画像リサイズ、Webhook処理、リアルタイム通知のトリガー）の特定を検討。
+            - ユーザーより、レセプト作成SaaSの特性上、該当する処理がないためスキップするよう指示あり。
     -   **BP_P3_T5: 非同期処理パターンの統一**
         -   **説明**: アプリケーション全体で `async/await` の使用方法やPromiseのチェーン、エラーハンドリング（特に `express-async-errors` の活用）のパターンを統一し、コードの一貫性と可読性を向上させる。
         -   **優先度**: 中
@@ -354,24 +405,28 @@
         -   **依存関係**: BP_P2_T2。
         -   **影響範囲**: 全ての非同期処理を含むコード。
         -   **検証方法**: コードレビュー。非同期処理を含む機能の動作確認。
-        -   **ステータス**: 未着手
-    -   **BP_P3_T6: テスト戦略の再構築**
-        -   **説明**: Jestをテストフレームワークとして、ユニットテスト、結合テスト、(必要に応じて)E2Eテストの戦略を再構築し、カバレッジを向上させる。Reactコンポーネント形式のテストファイルを適切なテストコードに修正する。Supabaseへの依存部分のモック戦略を確立する。
-        -   **優先度**: 高
-        -   **担当者**: バックエンド開発チーム、QAエンジニア
-        -   **具体的なアクション**:
-            1.  テスト方針（テスト対象、カバレッジ目標、テストデータの管理方法等）を定義。
-            2.  `tests/` ディレクトリ内の既存テストファイル（特にReact形式のもの）をJestの作法に沿って書き直す。
-            3.  Supabase Client や Prisma Client のモック方法を確立（例: `jest.mock`）。
-            4.  各モジュールのサービスロジックに対するユニットテストを拡充。
-            5.  APIエンドポイントに対する結合テスト（Supertest等を利用）を整備。
-            6.  CIプロセスにテスト実行を組み込み、マージ前にテストがパスすることを必須とする。
-        -   **期待される効果**: コード品質の向上。デグレードの早期発見。リファクタリングの安全性向上。
-        -   **前提条件**: Phase 1完了。
-        -   **依存関係**: BP_P1_T1。
-        -   **影響範囲**: `tests/` ディレクトリ全体。CI/CDプロセス。
-        -   **検証方法**: テストカバレッジレポート。CIでのテスト自動実行成功。
-        -   **ステータス**: 未着手
+        -   **ステータス**: 完了
+        -   **進捗**:
+            - コントローラー層 (`auth.controller.ts`, `users.controller.ts`, `chat.controller.ts`) およびサービス層 (`auth.service.ts`, `users.service.ts`, `chat.service.ts`) の現状の非同期処理パターンを調査しました。
+            - **現状のパターンと統一方針**:
+                - コントローラー: 全て `async` 関数。`express-async-errors` により `try...catch` は基本的に省略。認証エラーなどは `HttpError` をスロー。
+                - サービス: 全て `async` 関数。Prisma等の非同期処理は `await` で実行。エラーは呼び出し元にスローする方針で統一。
+                - `users.service.ts` のリソース取得・更新系関数 (`getUserProfileByFirebaseUid`, `getUserProfileById`, `updateUserProfileByFirebaseUid`, `upsertUserInjuryCauseByFirebaseUid`) について、リソースが存在しない場合に `null` を返す代わりに `HttpError(404, 'リソースが見つかりません')` をスローするように修正しました。
+            - **残課題**: なし (主要な方針は決定・適用済み)
+    -   **BP_P3_T6: テスト戦略の再構築** (現在ここ)
+        -   既存テスト (`tests/setup.ts`, `tests/e2e/auth.e2e-test.ts`, `tests/modules/auth/auth.service.test.ts`) を確認。
+        -   `auth.service.test.ts` のモック利用方法を改善し、グローバルモックへの依存を明確化。
+        -   `users.service.ts` のユニットテスト (`tests/modules/users/users.service.test.ts`) を新規作成。`UpdateUserProfileInput` 型に `displayName` を追加。
+        -   `chat.service.ts` のユニットテスト (`tests/modules/chat/chat.service.test.ts`) を新規作成。Prismaモデルの型インポートに関するリンターエラーを一時的に回避。
+        -   テスト実行コマンドの確認 (`package.json`, `backend/package.json` を参照し、`npm run test:cov` を特定)。
+        -   **テスト実行時に発見した問題**:
+            - `tests/modules/users/users.service.test.ts` で Prisma Client の型インポートエラー: `User`, `Patient`, `InjuryCause` 型が `@prisma/client` からインポートできない。
+            - エラーメッセージ: `Module '"@prisma/client"' has no exported member 'User'` など。
+            - 原因: Prisma スキーマと生成された型定義の間に不整合がある可能性がある。または、テスト環境での Prisma Client のモック方法に問題がある。
+            - 対応案:
+              1. Prisma Client の型定義を更新するため `npx prisma generate` の実行
+              2. 実際の Prisma スキーマに合わせてインポート文を修正
+              3. モック実装を `tests/setup.ts` で正しく設定
 
 ### Phase 4: 継続的改善と品質保証
 

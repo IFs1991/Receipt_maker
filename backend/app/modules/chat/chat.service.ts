@@ -10,6 +10,7 @@ import {
   ChatHistoryResponse
 } from './chat.types';
 import { logger } from '../../lib/logger';
+import { Prisma } from '@prisma/client';
 
 /**
  * ユーザーからのメッセージを処理し、AIの応答を返す
@@ -76,7 +77,7 @@ export async function getChatHistory(
   const { sessionId, limit = 50 } = query;
 
   // クエリ条件を構築
-  const where: any = { userId };
+  const where: Prisma.ChatMessageWhereInput = { userId };
   if (sessionId) {
     where.sessionId = sessionId;
   }

@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { login, register, getMe, logout } from './auth.controller';
-import { validateRequest } from '../../../middlewares/validateRequest';
-import { loginSchema, registerSchema } from './auth.validator';
-import { authenticate } from '../../../middlewares/authenticate'; // Firebase Admin SDK を使った認証ミドルウェアを想定
+import { validate } from '../../middleware/validation.middleware';
+import { loginUserSchema, registerUserSchema } from './auth.types';
+import { authenticate } from '../../middleware/auth.middleware';
 
 const router = Router();
 
@@ -18,20 +18,28 @@ const router = Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/RegisterInput'
+ *             $ref: '#/components/schemas/RegisterUserInput'
  *     responses:
  *       201:
  *         description: User registered successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/UserResponse'
+ *               $ref: '#/components/schemas/AuthSuccessResponse'
  *       400:
- *         description: Invalid input
+ *         description: Invalid input (Bad Request)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadRequestError'
  *       409:
  *         description: User already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/register', validateRequest(registerSchema), register);
+router.post('/register', validate(registerUserSchema, 'body'), register);
 
 /**
  * @openapi
@@ -45,26 +53,28 @@ router.post('/register', validateRequest(registerSchema), register);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/LoginInput'
+ *             $ref: '#/components/schemas/LoginUserInput'
  *     responses:
  *       200:
  *         description: User logged in successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                   description: Firebase ID token
- *                 user:
- *                   $ref: '#/components/schemas/UserResponse'
+ *               $ref: '#/components/schemas/AuthSuccessResponse'
  *       400:
- *         description: Invalid input
+ *         description: Invalid input (Bad Request)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadRequestError'
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
  */
-router.post('/login', validateRequest(loginSchema), login);
+router.post('/login', validate(loginUserSchema, 'body'), login);
 
 /**
  * @openapi
@@ -81,9 +91,19 @@ router.post('/login', validateRequest(loginSchema), login);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/UserResponse'
+ *               $ref: '#/components/schemas/UserObject'
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NotFoundError'
  */
 router.get('/me', authenticate, getMe);
 
@@ -93,15 +113,26 @@ router.get('/me', authenticate, getMe);
  *   post:
  *     tags:
  *       - Auth
- *     summary: Logout a user (client-side responsibility)
+ *     summary: Logout a user
+ *     description: Invalidates the user session on the server if applicable, or client clears token.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Logout successful (typically handled client-side by clearing token)
+ *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: 'string', example: 'Logout successful' }
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
  */
-router.post('/logout', authenticate, logout); // Backend might do session invalidation if using server-side sessions
+router.post('/logout', authenticate, logout);
 
 export default router;

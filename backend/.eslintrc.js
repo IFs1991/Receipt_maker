@@ -1,16 +1,29 @@
-import React, { useState } from 'react';
-
-const .eslintrc: React.FC = () => {
-  return (
-    <Card className="w-full bg-card">
-      <CardHeader className="bg-card">
-        <CardTitle className="bg-card">ESLint設定</CardTitle>
-        <CardDescription className="bg-card">TypeScriptプロジェクトのESLint設定です。</CardDescription>
-      </CardHeader>
-      <CardContent className="bg-card">
-        {/* コンテンツをここに配置 */}
-      </CardContent>
-    </Card>
-  );
+module.exports = {
+  env: {
+    browser: true,
+    es2021: true,
+    node: true,
+    jest: true,
+  },
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    // 'plugin:prettier/recommended', // Prettierとの連携は別途 .prettierrc.js で行うためコメントアウトも検討
+  ],
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    project: './tsconfig.json', // tsconfig.jsonのパスを指定
+  },
+  plugins: ['@typescript-eslint'],
+  rules: {
+    // ここにプロジェクト固有のルールを追加できます
+    // 例:
+    // '@typescript-eslint/no-unused-vars': 'warn',
+    // '@typescript-eslint/no-explicit-any': 'warn',
+  },
+  settings: {
+    // import/resolverの設定など、必要に応じて追加
+  },
 };
-export default .eslintrc;

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as userController from './users.controller';
-import { authenticate } from '../../../middlewares/authenticate'; // 認証ミドルウェア
-import { validateRequest } from '../../../middlewares/validateRequest';
+import { authenticate } from '../../middleware/auth.middleware'; // Corrected import path
+import { validate } from '../../middleware/validation.middleware'; // Use 'validate' from the correct path
 import { updateUserProfileSchema, updateInjuryCauseSchema } from './users.validator'; // バリデーションスキーマをインポート
 
 const router = Router();
@@ -58,7 +58,7 @@ router.get('/me', authenticate, userController.getCurrentUserProfile);
  *       404:
  *         description: User not found
  */
-router.put('/me/profile', authenticate, validateRequest(updateUserProfileSchema), userController.updateCurrentUserProfile);
+router.put('/me/profile', authenticate, validate(updateUserProfileSchema, 'body'), userController.updateCurrentUserProfile);
 
 // Add other user-related routes here if needed
 // Example: Get user by ID (for admin purposes, if any)
@@ -93,6 +93,6 @@ router.put('/me/profile', authenticate, validateRequest(updateUserProfileSchema)
  *       404:
  *         description: User not found
  */
-router.post('/me/injury-cause', authenticate, validateRequest(updateInjuryCauseSchema), userController.updateUserInjuryCause);
+router.post('/me/injury-cause', authenticate, validate(updateInjuryCauseSchema, 'body'), userController.updateUserInjuryCause);
 
 export default router;

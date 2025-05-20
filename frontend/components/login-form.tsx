@@ -15,12 +15,11 @@ import {
 } from "@/components/ui/card"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth"
-import firebaseApp from "../lib/firebase"
+import supabase from "../lib/supabase"
 
 export default function LoginForm() {
   const router = useRouter()
-  const [email, setEmail] = useState("") // Changed from userId to email for Firebase
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -31,41 +30,43 @@ export default function LoginForm() {
     setError("")
 
     try {
-      const auth = getAuth(firebaseApp)
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
+      // Supabase認証を使用してユーザーをログイン
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
-      )
-      const user = userCredential.user
-      const idToken = await user.getIdToken()
+      })
 
-      // Store the ID token in LocalStorage (as per conect.yaml temporary recommendation)
-      localStorage.setItem("firebaseIdToken", idToken)
-      // console.log("Firebase ID Token:", idToken); // For debugging
+      if (signInError) throw signInError
 
-      // Redirect to dashboard on successful login
-      router.push("/dashboard")
+      // セッション情報を取得
+      const { data: sessionData } = await supabase.auth.getSession()
+
+      if (sessionData?.session) {
+        // ログインが成功したらダッシュボードにリダイレクト
+        router.push("/dashboard")
+      } else {
+        throw new Error('セッションの取得に失敗しました')
+      }
     } catch (err: any) {
-      console.error("Firebase login error:", err)
+      console.error("Supabase login error:", err)
       let errorMessage = "ログインに失敗しました。"
-      if (err.code) {
-        switch (err.code) {
-          case "auth/user-not-found":
-          case "auth/wrong-password":
-          case "auth/invalid-credential": // Covers both wrong email and password in newer SDK versions
+
+      if (err.message) {
+        switch (err.message) {
+          case "Invalid login credentials":
             errorMessage = "メールアドレスまたはパスワードが正しくありません。"
             break
-          case "auth/invalid-email":
-            errorMessage = "メールアドレスの形式が正しくありません。"
+          case "Email not confirmed":
+            errorMessage = "メールアドレスが確認されていません。メールを確認してください。"
             break
-          case "auth/too-many-requests":
+          case "Too many requests":
             errorMessage = "試行回数が多すぎます。後でもう一度お試しください。"
             break
           default:
             errorMessage = `エラーが発生しました: ${err.message}`
         }
       }
+
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -89,10 +90,10 @@ export default function LoginForm() {
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email">メールアドレス</Label> {/* Changed from userId to email */}
+            <Label htmlFor="email">メールアドレス</Label>
             <Input
               id="email"
-              type="email" // Changed from text to email
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="メールアドレスを入力"

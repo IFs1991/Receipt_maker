@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import supabase from './supabase';
 
 // APIクライアントの基本設定
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
@@ -17,13 +18,17 @@ class ApiClient {
 
     // リクエストインターセプター：認証トークンの自動付与
     this.client.interceptors.request.use(
-      (config) => {
-        // LocalStorageからトークンを取得
-        const token = typeof window !== 'undefined' ? localStorage.getItem('firebaseIdToken') : null;
+      async (config) => {
+        try {
+          // Supabaseから現在のセッションを取得
+          const { data: { session } } = await supabase.auth.getSession();
 
-        // トークンが存在する場合、ヘッダーに追加
-        if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`;
+          // セッションとトークンが存在する場合、ヘッダーに追加
+          if (session?.access_token && config.headers) {
+            config.headers.Authorization = `Bearer ${session.access_token}`;
+          }
+        } catch (error) {
+          console.error('Supabaseセッション取得エラー:', error);
         }
 
         return config;
@@ -41,8 +46,9 @@ class ApiClient {
         if (error.response?.status === 401) {
           // ログインページへリダイレクト
           if (typeof window !== 'undefined') {
-            localStorage.removeItem('firebaseIdToken');
-            window.location.href = '/login';
+            // Supabaseからサインアウト
+            supabase.auth.signOut();
+            window.location.href = '/';
           }
         }
 

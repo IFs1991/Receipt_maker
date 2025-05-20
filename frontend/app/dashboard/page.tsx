@@ -1,96 +1,91 @@
-import dynamic from "next/dynamic"
-import DashboardLayout from "@/components/dashboard-layout"
-import { Suspense } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
+"use client"
 
-// 動的インポートでコンポーネントを遅延ロード
-const PatientInfoForm = dynamic(() => import("@/components/patient-info-form"), {
-  loading: () => <FormSkeleton />,
-  ssr: false,
-})
-
-const InjuryCauseForm = dynamic(() => import("@/components/injury-cause-form"), {
-  loading: () => <FormSkeleton />,
-  ssr: false,
-})
-
-const ChatInterface = dynamic(() => import("@/components/chat-interface"), {
-  loading: () => <FormSkeleton />,
-  ssr: false,
-})
-
-const ReasonDisplay = dynamic(() => import("@/components/reason-display"), {
-  loading: () => <FormSkeleton />,
-  ssr: false,
-})
-
-const FeedbackInterface = dynamic(() => import("@/components/feedback-interface"), {
-  loading: () => <FormSkeleton />,
-  ssr: false,
-})
-
-const SimilarCasesDisplay = dynamic(() => import("@/components/similar-cases-display"), {
-  loading: () => <FormSkeleton />,
-  ssr: false,
-})
-
-// 各コンポーネントのローディングスケルトン
-function FormSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-4 w-64" />
-      </div>
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-32 w-full" />
-        </div>
-        <Skeleton className="h-10 w-24" />
-      </div>
-    </div>
-  )
-}
+import { useAuth } from "@/lib/auth-context"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { ArrowRight, ClipboardList, FileText, MessageSquare } from "lucide-react"
 
 export default function Dashboard() {
-  return (
-    <DashboardLayout>
-      <div className="flex flex-col md:flex-row h-[calc(100vh-64px)] w-full">
-        {/* 左ペイン - 入力・インタラクションエリア */}
-        <div className="w-full md:w-1/2 p-4 overflow-y-auto border-r">
-          <div className="space-y-6">
-            <Suspense fallback={<FormSkeleton />}>
-              <PatientInfoForm />
-            </Suspense>
-            <Suspense fallback={<FormSkeleton />}>
-              <InjuryCauseForm />
-            </Suspense>
-            <Suspense fallback={<FormSkeleton />}>
-              <ChatInterface />
-            </Suspense>
-          </div>
-        </div>
+  const { user } = useAuth()
 
-        {/* 右ペイン - 出力・アクションエリア */}
-        <div className="w-full md:w-1/2 p-4 overflow-y-auto">
-          <div className="space-y-6">
-            <Suspense fallback={<FormSkeleton />}>
-              <ReasonDisplay />
-            </Suspense>
-            <Suspense fallback={<FormSkeleton />}>
-              <FeedbackInterface />
-            </Suspense>
-            <Suspense fallback={<FormSkeleton />}>
-              <SimilarCasesDisplay />
-            </Suspense>
-          </div>
-        </div>
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold mb-2">ダッシュボード</h1>
+        <p className="text-muted-foreground">
+          こんにちは、{user?.email?.split('@')[0] || 'ユーザー'}さん。レセプト理由書作成のためのサービス一覧です。
+        </p>
       </div>
-    </DashboardLayout>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <span>保険申請通過情報</span>
+            </CardTitle>
+            <CardDescription>
+              保険申請が通過した情報を登録・管理します
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              保険申請の通過情報を入力し、関連する治療や処置の記録を行うことができます。
+            </p>
+            <Link href="/approval-info">
+              <Button className="w-full">
+                保険申請通過情報へ
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-primary" />
+              <span>返戻情報</span>
+            </CardTitle>
+            <CardDescription>
+              返戻された内容と対応方法を記録します
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              返戻された申請の内容、返戻理由、対応策などを記録し、次回の申請に活かします。
+            </p>
+            <Link href="/return-info">
+              <Button className="w-full">
+                返戻情報へ
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              <span>AIアシスタント</span>
+            </CardTitle>
+            <CardDescription>
+              理由書作成をAIがサポートします
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              患者情報や症状から適切な理由書の文言をAIが提案。効率的に理由書を作成できます。
+            </p>
+            <Button className="w-full" disabled>
+              準備中
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
