@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UpdateInjuryCauseInput } from './users.types'; // UpdateInjuryCauseInput をインポート
 import * as userService from './users.service';
 import { UpdateUserProfileInput } from './users.types';
-import { ExtendedRequest } from '../../../middlewares/authenticate'; // ExtendedRequest型をインポート
+import { ExtendedRequest } from '../../middleware/auth.middleware'; // ExtendedRequest型のパスを修正
 import { HttpError } from '../../../utils/errors';
 
 /**
@@ -10,10 +10,10 @@ import { HttpError } from '../../../utils/errors';
  */
 export const getCurrentUserProfile = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user?.uid) {
+    if (!req.user?.id) { // `uid`から`id`に修正
       throw new HttpError(401, 'User not authenticated');
     }
-    const userProfile = await userService.getUserProfileByFirebaseUid(req.user.uid);
+    const userProfile = await userService.getUserProfileByFirebaseUid(req.user.id);
     if (!userProfile) {
       throw new HttpError(404, 'User profile not found');
     }
@@ -28,11 +28,11 @@ export const getCurrentUserProfile = async (req: ExtendedRequest, res: Response,
  */
 export const updateUserInjuryCause = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user?.uid) {
+    if (!req.user?.id) { // `uid`から`id`に修正
       throw new HttpError(401, 'User not authenticated');
     }
     const updatedInjuryCause = await userService.upsertUserInjuryCauseByFirebaseUid(
-      req.user.uid,
+      req.user.id,
       req.body as UpdateInjuryCauseInput // users.validator.ts で型が保証されている想定
     );
     if (!updatedInjuryCause) {
@@ -49,11 +49,11 @@ export const updateUserInjuryCause = async (req: ExtendedRequest, res: Response,
  */
 export const updateCurrentUserProfile = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user?.uid) {
+    if (!req.user?.id) { // `uid`から`id`に修正
       throw new HttpError(401, 'User not authenticated');
     }
     const updatedUserProfile = await userService.updateUserProfileByFirebaseUid(
-      req.user.uid,
+      req.user.id,
       req.body as UpdateUserProfileInput // users.validator.ts で型が保証されている想定
     );
     if (!updatedUserProfile) {
@@ -61,27 +61,6 @@ export const updateCurrentUserProfile = async (req: ExtendedRequest, res: Respon
       throw new HttpError(404, 'User profile could not be processed. It may not exist or required information for creation was missing.');
     }
     res.status(200).json(updatedUserProfile);
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Update current user's injury cause.
- */
-export const updateUserInjuryCause = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user?.uid) {
-      throw new HttpError(401, 'User not authenticated');
-    }
-    const updatedInjuryCause = await userService.upsertUserInjuryCauseByFirebaseUid(
-      req.user.uid,
-      req.body as UpdateInjuryCauseInput // users.validator.ts で型が保証されている想定
-    );
-    if (!updatedInjuryCause) {
-      throw new HttpError(404, 'User not found or injury cause could not be processed.');
-    }
-    res.status(200).json(updatedInjuryCause);
   } catch (error) {
     next(error);
   }
@@ -98,27 +77,6 @@ export const getUserProfileById = async (req: Request, res: Response, next: Next
       throw new HttpError(404, 'User profile not found');
     }
     res.status(200).json(userProfile);
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Update current user's injury cause.
- */
-export const updateUserInjuryCause = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user?.uid) {
-      throw new HttpError(401, 'User not authenticated');
-    }
-    const updatedInjuryCause = await userService.upsertUserInjuryCauseByFirebaseUid(
-      req.user.uid,
-      req.body as UpdateInjuryCauseInput // users.validator.ts で型が保証されている想定
-    );
-    if (!updatedInjuryCause) {
-      throw new HttpError(404, 'User not found or injury cause could not be processed.');
-    }
-    res.status(200).json(updatedInjuryCause);
   } catch (error) {
     next(error);
   }

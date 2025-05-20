@@ -1,22 +1,37 @@
-import React from 'react';
+import app from './app';
+import { env } from './config';
+import { logger } from './lib/logger';
 
-const server: React.FC = () => {
-  return (
-    <div className="bg-white dark:bg-gray-800">
-      <Card className="w-full bg-card mt-4">
-        <CardHeader className="bg-card">
-          <CardTitle className="bg-card">サーバーステータス</CardTitle>
-          <CardDescription className="bg-card">サーバーの起動状態を表示します</CardDescription>
-        </CardHeader>
-        <CardContent className="bg-card">
-          <p>サーバーが正常に起動しています。</p>
-          <p>ポート: {process.env.PORT || 3001}</p>
-          <p>APIベースパス: {process.env.API_BASE_PATH || '/api/v1'}</p>
-          <p>環境: {process.env.NODE_ENV || 'development'}</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+const PORT = env.PORT || 3001;
 
-export default server;
+// 必須環境変数の厳格なチェック
+const requiredEnvVars = [
+  'DATABASE_URL',
+  'SUPABASE_URL',
+  'SUPABASE_ANON_KEY',
+];
+
+const missingEnvVars = requiredEnvVars.filter(varName => !env[varName as keyof typeof env]);
+
+if (missingEnvVars.length > 0) {
+  logger.error(`致命的なエラー: 次の必須環境変数が設定されていません: ${missingEnvVars.join(', ')}`);
+  logger.error('アプリケーションを終了します。');
+  process.exit(1);
+}
+
+// サーバーを起動
+app.listen(PORT, () => {
+  logger.info(`サーバーが起動しました on port ${PORT}`);
+  logger.info(`API Base Path: ${env.API_BASE_PATH || '/api/v1'}`);
+  logger.info(`環境: ${env.NODE_ENV || 'development'}`);
+});
+
+// 未処理のエラーハンドリング
+process.on('unhandledRejection', (err) => {
+  logger.error('未処理のPromise拒否:', err);
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('未捕捉の例外:', err);
+  process.exit(1);
+});
